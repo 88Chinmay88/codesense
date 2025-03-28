@@ -3,18 +3,13 @@ import json
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import requests
-import logging
-
-# Configure logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(_name_)
 
 # Initialize Flask app
 app = Flask(_name_)
 CORS(app, origins=[
-    "https://codesense-delta.vercel.app",  # Removed trailing slash
-    "http://localhost:5173",
-    "http://localhost:3000"
+    "https://codesense-delta.vercel.app/",
+    "http://localhost:5173",  # For local development
+    "http://localhost:3000"   # For local development alternative port
 ])
 
 # Configuration
@@ -188,25 +183,16 @@ def ping():
 def review_code():
     """Endpoint to review code using Gemini API."""
     try:
-        logger.info("Received code review request")
         data = request.get_json()
-        
-        if not data:
-            logger.error("No JSON data received")
-            return jsonify({"error": "No JSON data provided"}), 400
-            
-        if 'code' not in data:
-            logger.error("No code field in request")
+        if not data or 'code' not in data:
             return jsonify({"error": "No code provided"}), 400
 
         code = data['code']
 
         # Validate code input
         if not isinstance(code, str) or len(code.strip()) == 0:
-            logger.error("Invalid code provided")
             return jsonify({"error": "Invalid code provided"}), 400
 
-        logger.info("Preparing Gemini API request")
         # Prepare the prompt
         full_prompt = f"{CODE_REVIEW_PROMPT}\n\nCode to analyze:\n\n{code}\n"
 
@@ -219,14 +205,12 @@ def review_code():
         }
 
         # Make the request to Gemini API
-        logger.info("Sending request to Gemini API")
         response = requests.post(url, json=payload)
         response.raise_for_status()
         
         # Parse the response
         response_data = response.json()
         if 'candidates' not in response_data or not response_data['candidates']:
-            logger.error("No response from Gemini API")
             return jsonify({"error": "No response from Gemini API"}), 500
             
         # Extract the text from the response
@@ -235,28 +219,23 @@ def review_code():
         # Parse and validate the response
         analysis_result = sanitize_json_response(response_text)
         if "error" in analysis_result:
-            logger.error(f"Failed to generate valid analysis: {analysis_result['error']}")
             return jsonify({"error": "Failed to generate valid analysis"}), 500
 
         # Validate the structure and content of the analysis result
         is_valid, error_message = validate_analysis_result(analysis_result)
         if not is_valid:
-            logger.error(f"Invalid analysis result: {error_message}")
             return jsonify({"error": error_message}), 500
 
-        logger.info("Successfully generated code review")
         return jsonify(analysis_result), 200
 
     except requests.exceptions.RequestException as e:
-        logger.error(f"API request failed: {str(e)}")
         return jsonify({"error": f"API request failed: {str(e)}"}), 503
     except Exception as e:
-        logger.error(f"Unexpected error: {str(e)}")
-        return jsonify({"error": f"An unexpected error occurred: {str(e)}"}), 500
+        return jsonify({"error": f"An error occurred: {str(e)}"}), 500
 
 if _name_ == "_main_":
     if not GEMINI_API_KEY:
-        logger.warning("⚠ WARNING: GEMINI_API_KEY environment variable is not set")
+        print("⚠ WARNING: GEMINI_API_KEY environment variable is not set")
         
     # Enable debug mode for development
     app.run(host='0.0.0.0', port=5000, debug=True)
