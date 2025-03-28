@@ -7,7 +7,7 @@ import requests
 # Initialize Flask app
 app = Flask(__name__)
 CORS(app, origins=[
-    "https://codesense-suraj0-11s-projects.vercel.app",
+    "https://codesense-delta.vercel.app/",
     "http://localhost:5173",  # For local development
     "http://localhost:3000"   # For local development alternative port
 ])
